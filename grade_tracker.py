@@ -1,68 +1,89 @@
+"""Student grade report.
+
+Parses student scores from CSV data, calculates each student's average
+(skipping invalid or missing scores), assigns a letter grade, prints a
+summary table, and exports the results as JSON.
+"""
+
 import csv
 import io
 import json
 
-csv_data = """name,score1,score2,score3
+CSV_DATA = """name,score1,score2,score3
 James Omondi,85,90,78
 Sandra Weru,72,,88
 Patrick Njiru,91,87,94
 Grace Achieng,60,bad data,70
 Brian Kamau,55,48,62"""
 
+SCORE_COLUMNS = ("score1", "score2", "score3")
+
+
 def parse_score(value):
+    """Return the score as an int, or None if it is missing or invalid."""
     try:
         return int(value)
     except (ValueError, TypeError):
         return None
 
+
 def calculate_average(scores):
+    """Return the average of the valid scores (1 decimal), or None if none are valid."""
     valid = [s for s in scores if s is not None]
     if not valid:
         return None
     return round(sum(valid) / len(valid), 1)
 
+
 def letter_grade(avg):
-    if avg is None: return "N/A"
-    if avg >= 90:   return "A"
-    elif avg >= 80: return "B"
-    elif avg >= 70: return "C"
-    elif avg >= 60: return "D"
-    else:           return "F"
+    """Convert an average to a letter grade; returns 'N/A' when there is no average."""
+    if avg is None:
+        return "N/A"
+    if avg >= 90:
+        return "A"
+    if avg >= 80:
+        return "B"
+    if avg >= 70:
+        return "C"
+    if avg >= 60:
+        return "D"
+    return "F"
 
-f = io.StringIO(csv_data)
-reader = csv.DictReader(f)
-results = []
 
-print("=" * 50)
-print(f"{'NAME':<20} {'AVG':>5}  {'GRADE':>5}  NOTES")
-print("=" * 50)
+def main():
+    reader = csv.DictReader(io.StringIO(CSV_DATA))
+    results = []
 
-for row in reader:
-    scores = [
-        parse_score(row["score1"]),
-        parse_score(row["score2"]),
-        parse_score(row["score3"])
-    ]
-    invalid_count = scores.count(None)
-    avg = calculate_average(scores)
-    grade = letter_grade(avg)
-    notes = f"{invalid_count} invalid score(s)" if invalid_count else "All scores valid"
+    print("=" * 50)
+    print(f"{'NAME':<20} {'AVG':>5}  {'GRADE':>5}  NOTES")
+    print("=" * 50)
 
-    print(f"{row['name']:<20} {str(avg):>5}  {grade:>5}  {notes}")
+    for row in reader:
+        scores = [parse_score(row[col]) for col in SCORE_COLUMNS]
+        invalid_count = scores.count(None)
+        avg = calculate_average(scores)
+        grade = letter_grade(avg)
+        notes = f"{invalid_count} invalid score(s)" if invalid_count else "All scores valid"
 
-    results.append({
-        "name": row["name"],
-        "scores": [row["score1"], row["score2"], row["score3"]],
-        "average": avg,
-        "grade": grade
-    })
+        print(f"{row['name']:<20} {str(avg):>5}  {grade:>5}  {notes}")
 
-print("=" * 50)
+        results.append({
+            "name": row["name"],
+            "scores": [row[col] for col in SCORE_COLUMNS],
+            "average": avg,
+            "grade": grade,
+        })
 
-valid_avgs = [r["average"] for r in results if r["average"] is not None]
-class_avg = round(sum(valid_avgs) / len(valid_avgs), 1)
-print(f"\nClass average: {class_avg}")
-print(f"Students: {len(results)}")
+    print("=" * 50)
 
-print("\nJSON export:")
-print(json.dumps(results, indent=2))
+    valid_avgs = [r["average"] for r in results if r["average"] is not None]
+    class_avg = round(sum(valid_avgs) / len(valid_avgs), 1) if valid_avgs else None
+    print(f"\nClass average: {class_avg}")
+    print(f"Students: {len(results)}")
+
+    print("\nJSON export:")
+    print(json.dumps(results, indent=2))
+
+
+if __name__ == "__main__":
+    main()
